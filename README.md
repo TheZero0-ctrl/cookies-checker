@@ -9,9 +9,13 @@ This script is intended for educational purposes and personal use only. Use it r
 ## Usage
 1. Clone the repository or download the script.
 2. Install the required dependencies using `pip install -r requirements.txt`.
-4. Place a directory named `netflix-cookies` inside the root directory, which contains a list of text files containing cookies for different Netflix accounts. Alternatively, you can provide the directory path containing the cookies files while running the script:
+4. Place a directory named `netflix-cookies` inside the root directory, which contains a list of text files containing cookies for different Netflix accounts. 
     ```
-    python cookies_checker.py <directory_path>
+    python cookies-checker.py
+    ```
+    Alternatively, you can provide the directory path containing the cookies files while running the script:
+    ```
+    python cookies-checker.py netflix <directory_path>
     ```
    Replace `<directory_path>` with the path to the directory containing the cookies files.
 
