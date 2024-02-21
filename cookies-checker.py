@@ -26,7 +26,6 @@ async def check_cookies(url, cookies, login_indicator):
         async with session.get(url) as response:
             text = await response.text()
             for indicator in login_indicator:
-                breakpoint()
                 if indicator in text:
                     return "working"
             return "not_working"
