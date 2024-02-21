@@ -1,52 +1,38 @@
 import os
 import sys
-from selenium import webdriver
-from selenium.webdriver.common.by import By
+import asyncio
+import aiohttp
 
 config = {
     "netflix": {
         "url": "https://www.netflix.com/",
         "domain": ".netflix.com",
         "directory": "./netflix-cookies",
-        "className": "default-ltr-cache-1clcoym"
+        "login_indicator": [
+            "list-profiles",
+            "watching?",
+            "notifications-menu",
+            "Sign out of Netflix",
+        ],
     },
 }
 
 
-def check_cookies(cookies):
-    options = webdriver.FirefoxOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Firefox(options=options)
-
-    driver.get(url)
-
-    # Add cookies
-    for cookie in cookies:
-        driver.add_cookie(cookie)
-
-    # Check if logged in
-    driver.get(url)
-    log_in = driver.find_elements(By.CLASS_NAME, className)
-    if len(log_in) == 0:
-        result = "working"
-    else:
-        result = "not_working"
-
-    # Close the browser
-    driver.quit()
-
-    return result
+async def check_cookies(url, cookies, login_indicator):
+    jar = aiohttp.CookieJar(unsafe=False)
+    async with aiohttp.ClientSession(cookie_jar=jar) as session:
+        for cookie in cookies:
+            session.cookie_jar.update_cookies({cookie['name']: cookie['value']})
+        async with session.get(url) as response:
+            text = await response.text()
+            for indicator in login_indicator:
+                breakpoint()
+                if indicator in text:
+                    return "working"
+            return "not_working"
 
 
-def isLoggedIn(driver):
-    try:
-        driver.find_element_by_xpath('//*[@id="appMountPoint"]/div/div[3]/div/div/div[1]/form/button').click()
-    except:
-        return True
-    return False
-
-
-def parse_cookie_file(file_path):
+def parse_cookie_file(file_path, domain):
     cookies = []
     try:
         with open(file_path, 'r') as file:
@@ -55,6 +41,7 @@ def parse_cookie_file(file_path):
         for line in lines:
             line = line.strip()
             if not line or line.startswith('#'):
+                print(f"Skipping line: {file_path}")
                 continue
 
             values = line.split('\t')
@@ -80,12 +67,12 @@ def parse_cookie_file(file_path):
                 secure = True
 
             cookie = {
+                'name': name,
                 'domain': domain,
-                'flag': flag,
                 'path': path,
                 'secure': secure,
+                'flag': flag,
                 'expiration': expiration,
-                'name': name,
                 'value': value
             }
 
@@ -96,50 +83,53 @@ def parse_cookie_file(file_path):
     return cookies
 
 
-if len(sys.argv) == 1:
-    netflix_config = config['netflix']
-    cookie_directory = netflix_config['directory']
-    url = netflix_config['url']
-    domain = netflix_config['domain']
-    className = netflix_config['className']
-elif len(sys.argv) == 2:
-    required_config = config[sys.argv[1]]
-    cookie_directory = required_config['directory']
-    url = required_config['url']
-    domain = required_config['domain']
-    className = required_config['className']
-elif len(sys.argv) == 3:
-    required_config = config[sys.argv[1]]
-    cookie_directory = sys.argv[2]
-    url = required_config['url']
-    domain = required_config['domain']
-    className = required_config['className']
-
-# Get the list of files in the directory
-cookie_files = os.listdir(cookie_directory)
+def cookies_jar(cookies):
+    jar = aiohttp.CookieJar(unsafe=False)
+    for cookie in cookies:
+        jar.update_cookies(cookie)
+    return jar
 
 
-# Check each cookie file
-for i, cookie_file in enumerate(cookie_files):
-    cookie_file_path = os.path.join(cookie_directory, cookie_file)
+async def main():
+    if len(sys.argv) == 1:
+        netflix_config = config['netflix']
+        cookie_directory = netflix_config['directory']
+        url = netflix_config['url']
+        domain = netflix_config['domain']
+        login_indicator = netflix_config['login_indicator']
+    elif len(sys.argv) == 2:
+        required_config = config[sys.argv[1]]
+        cookie_directory = required_config['directory']
+        url = required_config['url']
+        domain = required_config['domain']
+        login_indicator = required_config['login_indicator']
+    elif len(sys.argv) == 3:
+        required_config = config[sys.argv[1]]
+        cookie_directory = sys.argv[2]
+        url = required_config['url']
+        domain = required_config['domain']
+        login_indicator = required_config['login_indicator']
 
-    # Parse the cookies from the file
-    cookies = parse_cookie_file(cookie_file_path)
+    cookie_files = os.listdir(cookie_directory)
 
-    # Check the cookies and get the result
-    result = check_cookies(cookies)
+    for i, cookie_file in enumerate(cookie_files):
+        cookie_file_path = os.path.join(cookie_directory, cookie_file)
+        cookies = parse_cookie_file(cookie_file_path, domain)
+        result = await check_cookies(url, cookies, login_indicator)
 
-    if result == "working":
-        result = "working"
-        if cookie_file.startswith("working"):
-            new_file_name = cookie_file
+        if result == "working":
+            if cookie_file.startswith("working"):
+                new_file_name = cookie_file
+            else:
+                new_file_name = f"working_{i+1}.txt"
+            new_file_path = os.path.join(cookie_directory, new_file_name)
+            os.rename(cookie_file_path, new_file_path)
+            print(
+                f"Cookie file '{cookie_file}' is {result}. Renamed to '{new_file_name}'."
+            )
         else:
-            new_file_name = f"working_{i+1}.txt"
-        new_file_path = os.path.join(cookie_directory, new_file_name)
+            os.remove(cookie_file_path)
+            print(f"Cookie file '{cookie_file}' is {result}. Removed.")
 
-        os.rename(cookie_file_path, new_file_path)
-        print(
-            f"Cookie file '{cookie_file}' is {result}. Renamed to '{new_file_name}'.")
-    else:
-        os.remove(cookie_file_path)
-        print(f"Cookie file '{cookie_file}' is {result}. Removed.")
+if __name__ == "__main__":
+    asyncio.run(main())
