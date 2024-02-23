@@ -4,7 +4,8 @@
 This Python script is designed to check the validity of cookies, initially focusing on Netflix. 
 
 ## Disclaimer
-This script is intended for educational purposes and personal use only. Use it responsibly and respect the terms of service of the websites you're checking cookies for.
+This script is intended for educational purposes only. Use it responsibly and respect the terms of service of the websites you're checking cookies for.
+I'm not held responsible for any misuse of the script.
 
 ## Usage
 1. Clone the repository or download the script.

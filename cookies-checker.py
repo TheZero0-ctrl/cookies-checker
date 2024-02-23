@@ -40,7 +40,6 @@ def parse_cookie_file(file_path, domain):
         for line in lines:
             line = line.strip()
             if not line or line.startswith('#'):
-                print(f"Skipping line: {file_path}")
                 continue
 
             values = line.split('\t')
